@@ -59,6 +59,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Create portable bundle
+        shell: pwsh
+        run: |
+          $portableDir = "Image-Compressor-portable"
+          New-Item -ItemType Directory -Force -Path $portableDir
+          Copy-Item "src-tauri/target/release/image-compressor.exe" "$portableDir/Image Compressor.exe"
+          Copy-Item "src-tauri/vips-bin/vips.exe" $portableDir/
+          Copy-Item "src-tauri/vips-bin/*.dll" $portableDir/
+          Compress-Archive -Path "$portableDir/*" -DestinationPath "Image-Compressor-win64-portable.zip"
+          Write-Host "Created portable zip"
+
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
@@ -66,4 +77,10 @@ jobs:
           path: |
             src-tauri/target/release/bundle/nsis/*.exe
             src-tauri/target/release/bundle/msi/*.msi
+
+      - name: Upload portable exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-portable
+          path: Image-Compressor-win64-portable.zip
           retention-days: 90
