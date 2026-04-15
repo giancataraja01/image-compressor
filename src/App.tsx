@@ -260,6 +260,10 @@ export default function App() {
       )}
 
       <ResultsTable files={files} />
+
+      <p className="mt-4 text-center text-[11px] text-zinc-600">
+        Created By Gian Cataraja
+      </p>
     </div>
   );
 }
