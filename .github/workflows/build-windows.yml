@@ -28,6 +28,32 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Download and stage libvips for bundling
+        shell: pwsh
+        run: |
+          $vipsVersion = "8.16.1"
+          $vipsUrl = "https://github.com/libvips/build-win64-mxe/releases/download/v${vipsVersion}/vips-dev-w64-all-${vipsVersion}.zip"
+          Write-Host "Downloading libvips ${vipsVersion}..."
+          Invoke-WebRequest -Uri $vipsUrl -OutFile vips.zip
+          Expand-Archive vips.zip -DestinationPath vips-extract
+          $vipsDir = Get-ChildItem vips-extract -Directory | Select-Object -First 1
+          $binDir = Join-Path $vipsDir.FullName "bin"
+
+          # Stage vips binaries into src-tauri/vips-bin/
+          $targetDir = "src-tauri/vips-bin"
+          New-Item -ItemType Directory -Force -Path $targetDir
+          Copy-Item "$binDir/vips.exe" $targetDir/
+          Copy-Item "$binDir/*.dll" $targetDir/
+          Write-Host "Staged vips files into $targetDir"
+
+      - name: Patch tauri.conf.json to bundle vips
+        shell: pwsh
+        run: |
+          $conf = Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json
+          $conf.bundle | Add-Member -NotePropertyName "resources" -NotePropertyValue @{"vips-bin/*" = "./"} -Force
+          $conf | ConvertTo-Json -Depth 10 | Set-Content src-tauri/tauri.conf.json
+          Write-Host "Patched tauri.conf.json with vips resources"
+
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
@@ -38,6 +64,6 @@ jobs:
         with:
           name: windows-installer
           path: |
-            src-tauri/target/release/bundle/msi/*.msi
             src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/msi/*.msi
           retention-days: 90
